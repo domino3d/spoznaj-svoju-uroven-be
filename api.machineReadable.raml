@@ -1,0 +1,43 @@
+#%RAML 1.0
+title: PROGRAMATOR.SK
+version: v1
+baseUri: 'http://api.programator.sk/'
+mediaType: application/json
+/gallery:
+    description: 'Práca s galériami'
+    get:
+        description: "Zoznam všetkých galérií. Response obsahuje pole objektov galérií,\nkde `path` je cesta priamo použiteľná pre získanie obsahu galérie\na `name` je názov galérie.\n\nAk galéria obsahuje obrázok, tak tento je v objekte ako `image`\n"
+        responses:
+            '200': {body: {application/json: {type: null, example: "{\n  \"galleries\": [\n    {\n      \"path\": \"Wild%20Nature\",\n      \"name\": \"Wild Nature\"\n    },\n    {\n      \"path\": \"Cars\",\n      \"name\": \"Cars\"\n    }\n  ]\n}\n"}}}
+            '500': {description: 'Nedefinovaná chyba'}
+    post:
+        description: "Vytvorenie novej galérie. Názov galérie nemôže obsahovať znak `/`\n"
+        body:
+            application/json: {type: null, example: "{\n  \"name\": \"Wild animals\"\n}\n"}
+        responses:
+            '201': {description: 'Galeria bola vytvorená', body: {application/json: {example: "{\n  \"path\": \"Animals\",\n  \"name\": \"Animals\"\n}\n"}}}
+            '400': {description: 'Chybne zadaný request - nevhodný obsah podľa schémy.', body: {application/json: {description: 'Detail chyby.', example: "{\n  \"code\": 400,\n  \"payload\": {\n    \"paths\": [\"name\"],\n    \"validator\": \"required\",\n    \"example\": null\n  },\n  \"name\": \"INVALID_SCHEMA\",\n  \"description\": \"Bad JSON object: u'name' is a required property\"\n}\n"}}}
+            '409': {description: 'Galéria so zadaným názvom už existuje'}
+            '500': {description: 'Nedefinovaná chyba'}
+    '/{path}':
+        get:
+            description: 'Zoznam obrázkov v galérii.'
+            responses: {'200': {description: "Zoznam obrázkov v galérii a informácie o galérii.\n", body: {application/json: {type: null, example: "{\n  \"gallery\": {\n    \"path\": \"Animals\",\n    \"name\": \"Animals\"\n  },\n  \"images\": [\n    {\n      \"path\": \"elephant.jpg\",\n      \"fullpath\": \"Animals/elephant.jpg\",\n      \"name\": \"Elephant\",\n      \"modified\": \"2017-04-19T08:11:00.0+0200\"\n    },\n    {\n      \"path\": \"lion.jpg\",\n      \"fullpath\": \"Animals/lion.jpg\",\n      \"name\": \"Lion\",\n      \"modified\": \"2017-04-19T08:11:32.0+0200\"\n    }\n  ]\n}\n"}}}, '404': {description: 'Zvolená galéria neexistuje'}, '500': {description: 'Nedefinovaná chyba'}}
+        delete:
+            description: 'Vymazanie zvolenej galérie, alebo obrázku'
+            responses: {'200': {description: 'Galéria/obrázok bola úspešne vymazaná'}, '404': {description: 'Zvolená galéria/obrázok neexistuje'}, '500': {description: 'Nedefinovaná chyba'}}
+        post:
+            description: 'Upload obrázku do zvolenej galérie'
+            headers: {Content-Type: {type: string, required: true, example: "Content-Type: multipart/form-data; boundary=--boundary\n"}}
+            body: {multipart/form-data: {description: "Upload obrázku do zvolenej galérie.\nJe mozne uploadnut naraz viac obrazkov. API spracuje kazdy typ image/jpeg.\nRequest je klasický file multipart/form-data upload.\nAko názov obrázku sa použije filename. Ak už súbor s týmto názvom v galérii existuje,\nzmení sa mu názov, pridaním čísla na koniec názvu.\n", type: file, fileTypes: [image/jpeg], example: "----boundary\nContent-Disposition: form-data; name=\"image\"; filename=\"elephant.jpg\"\nContent-Type: image/jpeg\n\n<encoded document>\n\n----boundary--\n"}}
+            responses: {'201': {body: {application/json: {example: "{\"uploaded\": [{\n  \"path\": \"elephant.jpg\",\n  \"fullpath\": \"Animals/elephant.jpg\",\n  \"name\": \"Elephant\",\n  \"modified\": \"2017-04-19T08:11:00+0200\"\n}]}\n"}}}, '400': {description: 'Chybný request - nenašiel sa súbor pre upload.'}, '404': {description: 'Galéria pre upload sa nenašla'}}
+/images:
+    description: 'Práca s obrázkami'
+    '/{w}x{h}/{path}':
+        uriParameters:
+            w: {type: number, description: "Požadovaná šírka obrázku. Môže byť 0, vtedy sa dopočíta\npodľa výšky so zachovaním pomeru strán.\n"}
+            h: {type: number, description: "Požadovaná šírka obrázku. Môže byť 0, vtedy sa dopočíta\npodľa šírky so zachovaním pomeru strán.\n"}
+            path: {type: string, description: "`fullpath` parameter so zoznamu obrázkov `GET /gallery/{path}`\n"}
+        get:
+            description: 'Vygenerovanie náhľadového obrázku'
+            responses: {'200': {body: {image/jpeg: null}}, '404': {description: 'Obrázok sa nenašiel'}, '500': {description: 'Nepodarilo sa spracovať obrázok a vygenerovať náhľad.'}}
